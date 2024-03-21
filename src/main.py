@@ -10,9 +10,13 @@ class HuffmanNode:
         self.freq = freq
         self.left = left
         self.right = right
+        self.bit_str = ""
+
+    def set_bit_str(self, bit_str):
+        self.bit_str = bit_str
 
     def __str__(self):
-        return f"Character: {self.char} Frequency: {self.freq}"
+        return f"Character: {'Internal Node' if self.char is None else self.char} Frequency: {self.freq}"
 
 def get_file_name(argv):
     return argv[1]
@@ -85,6 +89,16 @@ def build_huffman_tree(q):
         new_node = HuffmanNode(None, l.freq + r.freq, l, r)
         insert(q, new_node)
 
+def walk_huffman(node, bitStr):
+    if not (node.left and node.right):
+        node.set_bit_str(bitStr)
+        return
+    if node.left:
+        walk_huffman(node.left, bitStr + '0')
+    if node.right:
+        walk_huffman(node.right, bitStr + '1')
+
+
 def is_valid_min_heap(q):
     for node in q:
         if node.left and node.freq > node.left.freq:
@@ -107,6 +121,8 @@ if __name__ == "__main__":
     freq = gen_char_freq(file_path)
     q = []
     for idx, freq in enumerate(freq):
+        if freq == 0:
+            continue
         node = HuffmanNode(chr(idx), freq)
         q.append(node)
 
@@ -118,6 +134,6 @@ if __name__ == "__main__":
 
     build_huffman_tree(q)
     huffman_tree_head = q[0]
-    print(huffman_tree_head)
+    walk_huffman(huffman_tree_head, "")
 
 
