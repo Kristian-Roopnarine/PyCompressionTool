@@ -17,6 +17,9 @@ class HuffmanNode:
     def set_bit_str(self, bit_str):
         self.bit_str = bit_str
 
+    def get_bit_string(self):
+        return 
+
     def get_header_string(self):
         return f"{self.char},{self.freq}"
 
@@ -128,6 +131,27 @@ def build_header(huffman_tree):
     header_arr.append(HEADER_END)
     return "\n".join(header_arr)
 
+def get_bit_string(node, char):
+    if not node:
+        return
+    try:
+        if node.char == char.decode("utf-8"):
+            return node.bit_str
+    except:
+        pass
+    return get_bit_string(node.left, char) or get_bit_string(node.right, char)
+
+def compress_file(prefix_table, file_name):
+    f_handler = open(file_name, "rb")
+    output = ''
+    while True:
+        char = f_handler.read(1)
+        if char == b'':
+            break
+        output += str(get_bit_string(prefix_table, char))
+    f_handler.close()
+    return output
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Please include a file name to compress")
@@ -155,7 +179,9 @@ if __name__ == "__main__":
     build_huffman_tree(q)
     huffman_tree_head = q[0]
     walk_huffman(huffman_tree_head, "")
-    header_string = build_header(huffman_tree_head)
-    print(header_string)
+    compressed_content = build_header(huffman_tree_head)
+    compressed_content += compress_file(huffman_tree_head, f'{INPUT_DIR}/{file_name}')
+    with open("output.txt", "wb") as w:
+        w.write(bytes(compressed_content, "utf-8"))
 
 
