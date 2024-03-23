@@ -2,6 +2,8 @@ import sys
 import os
 
 INPUT_DIR="files_to_compress"
+HEADER_BEGIN="HEADER_BEGIN"
+HEADER_END="HEADER_END"
 
 class HuffmanNode:
 
@@ -14,6 +16,9 @@ class HuffmanNode:
 
     def set_bit_str(self, bit_str):
         self.bit_str = bit_str
+
+    def get_header_string(self):
+        return f"{self.char},{self.freq}"
 
     def __str__(self):
         return f"Character: {'Internal Node' if self.char is None else self.char} Frequency: {self.freq}"
@@ -107,6 +112,21 @@ def is_valid_min_heap(q):
             return False
     return True
 
+def _header_builder(node, header_arr):
+    if not (node.left and node.right):
+        header_arr.append(node.get_header_string())
+        return 
+    if node.left:
+        _header_builder(node.left, header_arr)
+    if node.right:
+        _header_builder(node.right, header_arr)
+
+def build_header(huffman_tree):
+    header_arr = [HEADER_BEGIN]
+    node = huffman_tree 
+    _header_builder(node, header_arr)
+    header_arr.append(HEADER_END)
+    return "\n".join(header_arr)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -135,5 +155,7 @@ if __name__ == "__main__":
     build_huffman_tree(q)
     huffman_tree_head = q[0]
     walk_huffman(huffman_tree_head, "")
+    header_string = build_header(huffman_tree_head)
+    print(header_string)
 
 
