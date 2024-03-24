@@ -4,6 +4,7 @@ import time
 
 
 INPUT_DIR="files_to_compress"
+DECOMPRESS_DIR="compressed_files"
 HEADER_BEGIN="HEADER_BEGIN"
 HEADER_END="HEADER_END"
 
@@ -14,7 +15,7 @@ class HuffmanNode:
         self.freq = freq
         self.left = left
         self.right = right
-        self.bit_str = b''
+        self.bit_str = ""
 
     def set_bit_str(self, bit_str):
         self.bit_str = bit_str
@@ -99,15 +100,20 @@ def build_huffman_tree(q):
         new_node = HuffmanNode(None, l.freq + r.freq, l, r)
         insert(q, new_node)
 
-def walk_huffman(node, bitStr):
+def walk_huffman(node,prefix_table, bitStr):
     if not (node.left and node.right):
         node.set_bit_str(bitStr)
+        prefix_table[ord(node.char)] = bitStr
         return
     if node.left:
-        walk_huffman(node.left, bitStr + b'0')
+        walk_huffman(node.left, prefix_table, bitStr + '0')
     if node.right:
-        walk_huffman(node.right, bitStr + b'1')
+        walk_huffman(node.right,prefix_table, bitStr + '1')
 
+def gen_prefix_table(huffman_node):
+    prefix_table = [0] * 256
+    walk_huffman(huffman_node, prefix_table, "")
+    return prefix_table
 
 def is_valid_min_heap(q):
     for node in q:
@@ -143,35 +149,32 @@ def build_header(huffman_tree):
     node = huffman_tree 
     _header_builder(node, header_arr)
     header_arr.append(HEADER_END)
+    header_arr.append("\n")
     return "\n".join(header_arr)
 
-def get_bit_string(node, char):
-    if not node:
-        return
-    try:
-        if node.char == char.decode("utf-8"):
-            return node.bit_str
-    except:
-        return b''
-    return get_bit_string(node.left, char) or get_bit_string(node.right, char)
+def gen_reverse_prefix_map(prefix_table):
+    reverse_prefix_map = dict()
+    for idx, val in enumerate(prefix_table):
+        if val == 0:
+            continue
+        reverse_prefix_map[val] = chr(idx)
+    return reverse_prefix_map
 
 def compress_file(prefix_table, file_name):
     f_handler = open(file_name, "rb")
-    output = []
+    output = ""
     while True:
         char = f_handler.read(1)
         if char == b'':
             break
-        bit_str = get_bit_string(prefix_table, char)
-        output.append(bit_str)
+        try:
+            output += prefix_table[ord(char.decode())]
+        except:
+            continue
     f_handler.close()
-    return b''.join(output)
+    return output
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Please include a file name to compress")
-        sys.exit(1)
-    file_name = get_file_name(sys.argv)
+def compress(file_name):
     file_path = f'{INPUT_DIR}/{file_name}'
     if not (os.path.exists(file_path) and os.path.isfile(file_path)):
         print("Error finding file")
@@ -193,18 +196,78 @@ if __name__ == "__main__":
 
     build_huffman_tree(q)
     huffman_tree_head = q[0]
-    walk_huffman(huffman_tree_head, b'')
-    test_compressed_bit_length(huffman_tree_head)
+    prefix_table = gen_prefix_table(huffman_tree_head)
     header = build_header(huffman_tree_head)
-    """
-    There is a difference between the sum of the bits from huffman table and 
-    the compressed_output length. This probably means there is some data missing.
-    Also the size of compressed output is larger than original file. 
-    """
-    compressed_output = compress_file(huffman_tree_head, f'{INPUT_DIR}/{file_name}')
-    print(type(compressed_output))
-    with open("output.bin", "wb") as w:
+    compressed_output = compress_file(prefix_table, f'{INPUT_DIR}/{file_name}')
+    compressed_output_len = len(compressed_output) + 7
+    byte_size = compressed_output_len // 8
+    compressed_bytes = int(compressed_output, 2).to_bytes(byte_size, byteorder="big")
+    output_file = f"{DECOMPRESS_DIR}/{file_name.split('.')[0]}.bin"
+    with open(output_file, 'wb+') as w:
         w.write(header.encode())
-        w.write(compressed_output)
+        w.write(compressed_bytes)
+
+def read_header(f):
+    in_header = False
+    freq = [0] * 256
+    while True:
+        line = f.readline().decode().strip()
+        if line == HEADER_BEGIN:
+            in_header = True
+            continue
+
+        if line == HEADER_END:
+            in_header = False
+            break
+
+        if in_header:
+            char, char_freq = line.split(",")
+            freq[int(char)] = int(char_freq)
+    return f, freq
+
+def decompress(file_name):
+    file_path = f'{DECOMPRESS_DIR}/{file_name}'
+    if not (os.path.exists(file_path) and os.path.isfile(file_path)):
+        print("Error finding file")
+        sys.exit(1)
+    f = open(file_path,"rb")
+    f, freq = read_header(f)
+    q = []
+    for idx, val in enumerate(freq):
+        if val == 0:
+            continue
+        q.append(HuffmanNode(chr(idx), val))
+    build_min_heap(q)
+    build_huffman_tree(q)
+    huffman_tree_head = q[0]
+    prefix_table = gen_prefix_table(huffman_tree_head)
+    output = ""
+    compressed_content = f.read()
+    file_to_decode = bin(int(compressed_content.hex(), 16)).replace('0b', '')
+    f.close()
+    curr_node = huffman_tree_head
+    for char in file_to_decode:
+        if char == '0':
+            curr_node = curr_node.left
+        if char == '1':
+            curr_node = curr_node.right
+
+        if not (curr_node.left and curr_node.right):
+            output += curr_node.char
+            curr_node = huffman_tree_head
+    print(output)
+    with open(f"{file_name.split('.')[0]}_uncompressed.txt", "w") as f:
+        f.write(output)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Please include a file name to compress")
+        sys.exit(1)
+    file_name = get_file_name(sys.argv)
+    if file_name.split(".")[-1] == "bin":
+        decompress(file_name)
+    else:
+        compress(file_name)
 
 
