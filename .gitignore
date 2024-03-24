@@ -1,4 +1,5 @@
 venv/
 output.txt
 output.bin
+*/compressed_files/*
 .DS_STORE

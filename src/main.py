@@ -4,6 +4,7 @@ import time
 
 
 INPUT_DIR="files_to_compress"
+DECOMPRESS_DIR="compressed_files"
 HEADER_BEGIN="HEADER_BEGIN"
 HEADER_END="HEADER_END"
 
@@ -163,14 +164,9 @@ def compress_file(prefix_table, file_name):
         except:
             continue
     f_handler.close()
-    print('exit function')
     return output
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Please include a file name to compress")
-        sys.exit(1)
-    file_name = get_file_name(sys.argv)
+def compress(file_name):
     file_path = f'{INPUT_DIR}/{file_name}'
     if not (os.path.exists(file_path) and os.path.isfile(file_path)):
         print("Error finding file")
@@ -196,10 +192,73 @@ if __name__ == "__main__":
     header = build_header(huffman_tree_head)
     compressed_output = compress_file(prefix_table, f'{INPUT_DIR}/{file_name}')
     compressed_output_len = len(compressed_output) + 7
-    divided_by_8 = compressed_output_len // 8
-    compressed_bytes = int(compressed_output, 2).to_bytes(divided_by_8, byteorder="big")
-    with open(f"output_{divided_by_8}.bin", "wb") as w:
+    byte_size = compressed_output_len // 8
+    compressed_bytes = int(compressed_output, 2).to_bytes(byte_size, byteorder="big")
+    output_file = f"{DECOMPRESS_DIR}/{file_name.split('.')[0]}.bin"
+    with open(output_file, 'wb+') as w:
         w.write(header.encode())
         w.write(compressed_bytes)
+
+def read_header(f):
+    in_header = False
+    q = []
+    while True:
+        line = f.readline().decode().strip()
+        if line == HEADER_BEGIN:
+            in_header = True
+            continue
+
+        if line == HEADER_END:
+            in_header = False
+            break
+
+        if in_header:
+            char, freq = line.split(",")
+            print(chr(int(char)), freq)
+            q.append(HuffmanNode(chr(int(char)), freq))
+    return f, q
+
+def decompress(file_name):
+    file_path = f'{DECOMPRESS_DIR}/{file_name}'
+    if not (os.path.exists(file_path) and os.path.isfile(file_path)):
+        print("Error finding file")
+        sys.exit(1)
+    f = open(file_path,"rb")
+    f, q = read_header(f)
+    build_min_heap(q)
+    build_huffman_tree(q)
+    huffman_tree_head = q[0]
+    prefix_table = gen_prefix_table(huffman_tree_head)
+    reverse_prefix_map = dict()
+    for idx, val in enumerate(prefix_table):
+        if val == 0:
+            continue
+        if chr(idx) == "t":
+            print(val)
+        reverse_prefix_map[val] = chr(idx)
+    output = ""
+    return
+    while True:
+        char = f.read(1)
+        if char == b'':
+            break
+        bin_str = bin(int.from_bytes(char, byteorder="big"))[2:]
+        try:
+            output += reverse_prefix_map[bin_str]
+        except:
+            continue
+    f.close()
+    print(output)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Please include a file name to compress")
+        sys.exit(1)
+    file_name = get_file_name(sys.argv)
+    if file_name.split(".")[-1] == "bin":
+        decompress(file_name)
+    else:
+        compress(file_name)
 
 
