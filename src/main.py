@@ -102,6 +102,7 @@ def build_huffman_tree(q):
 
 def walk_huffman(node,prefix_table, bitStr):
     if not (node.left and node.right):
+        node.set_bit_str(bitStr)
         prefix_table[ord(node.char)] = bitStr
         return
     if node.left:
@@ -151,6 +152,13 @@ def build_header(huffman_tree):
     header_arr.append("\n")
     return "\n".join(header_arr)
 
+def gen_reverse_prefix_map(prefix_table):
+    reverse_prefix_map = dict()
+    for idx, val in enumerate(prefix_table):
+        if val == 0:
+            continue
+        reverse_prefix_map[val] = chr(idx)
+    return reverse_prefix_map
 
 def compress_file(prefix_table, file_name):
     f_handler = open(file_name, "rb")
@@ -201,7 +209,7 @@ def compress(file_name):
 
 def read_header(f):
     in_header = False
-    q = []
+    freq = [0] * 256
     while True:
         line = f.readline().decode().strip()
         if line == HEADER_BEGIN:
@@ -213,10 +221,9 @@ def read_header(f):
             break
 
         if in_header:
-            char, freq = line.split(",")
-            print(chr(int(char)), freq)
-            q.append(HuffmanNode(chr(int(char)), freq))
-    return f, q
+            char, char_freq = line.split(",")
+            freq[int(char)] = int(char_freq)
+    return f, freq
 
 def decompress(file_name):
     file_path = f'{DECOMPRESS_DIR}/{file_name}'
@@ -224,31 +231,33 @@ def decompress(file_name):
         print("Error finding file")
         sys.exit(1)
     f = open(file_path,"rb")
-    f, q = read_header(f)
+    f, freq = read_header(f)
+    q = []
+    for idx, val in enumerate(freq):
+        if val == 0:
+            continue
+        q.append(HuffmanNode(chr(idx), val))
     build_min_heap(q)
     build_huffman_tree(q)
     huffman_tree_head = q[0]
     prefix_table = gen_prefix_table(huffman_tree_head)
-    reverse_prefix_map = dict()
-    for idx, val in enumerate(prefix_table):
-        if val == 0:
-            continue
-        if chr(idx) == "t":
-            print(val)
-        reverse_prefix_map[val] = chr(idx)
     output = ""
-    return
-    while True:
-        char = f.read(1)
-        if char == b'':
-            break
-        bin_str = bin(int.from_bytes(char, byteorder="big"))[2:]
-        try:
-            output += reverse_prefix_map[bin_str]
-        except:
-            continue
+    compressed_content = f.read()
+    file_to_decode = bin(int(compressed_content.hex(), 16)).replace('0b', '')
     f.close()
+    curr_node = huffman_tree_head
+    for char in file_to_decode:
+        if char == '0':
+            curr_node = curr_node.left
+        if char == '1':
+            curr_node = curr_node.right
+
+        if not (curr_node.left and curr_node.right):
+            output += curr_node.char
+            curr_node = huffman_tree_head
     print(output)
+    with open(f"{file_name.split('.')[0]}_uncompressed.txt", "w") as f:
+        f.write(output)
 
 
 if __name__ == "__main__":
