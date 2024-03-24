@@ -1,5 +1,7 @@
 import sys
 import os
+import time
+
 
 INPUT_DIR="files_to_compress"
 HEADER_BEGIN="HEADER_BEGIN"
@@ -12,7 +14,7 @@ class HuffmanNode:
         self.freq = freq
         self.left = left
         self.right = right
-        self.bit_str = ""
+        self.bit_str = b''
 
     def set_bit_str(self, bit_str):
         self.bit_str = bit_str
@@ -21,7 +23,7 @@ class HuffmanNode:
         return 
 
     def get_header_string(self):
-        return f"{self.char},{self.freq}"
+        return f"{ord(self.char)},{self.freq}"
 
     def __str__(self):
         return f"Character: {'Internal Node' if self.char is None else self.char} Frequency: {self.freq}"
@@ -102,9 +104,9 @@ def walk_huffman(node, bitStr):
         node.set_bit_str(bitStr)
         return
     if node.left:
-        walk_huffman(node.left, bitStr + '0')
+        walk_huffman(node.left, bitStr + b'0')
     if node.right:
-        walk_huffman(node.right, bitStr + '1')
+        walk_huffman(node.right, bitStr + b'1')
 
 
 def is_valid_min_heap(q):
@@ -124,6 +126,18 @@ def _header_builder(node, header_arr):
     if node.right:
         _header_builder(node.right, header_arr)
 
+
+def _traverse(node):
+    if not node:
+        return 0
+    if not (node.left and node.right):
+        return len(bin(int(node.bit_str, 2))) * node.freq
+    return _traverse(node.left) + _traverse(node.right)
+
+def test_compressed_bit_length(node):
+    _sum = _traverse(node)
+    print(_sum)
+
 def build_header(huffman_tree):
     header_arr = [HEADER_BEGIN]
     node = huffman_tree 
@@ -138,19 +152,20 @@ def get_bit_string(node, char):
         if node.char == char.decode("utf-8"):
             return node.bit_str
     except:
-        pass
+        return b''
     return get_bit_string(node.left, char) or get_bit_string(node.right, char)
 
 def compress_file(prefix_table, file_name):
     f_handler = open(file_name, "rb")
-    output = ''
+    output = []
     while True:
         char = f_handler.read(1)
         if char == b'':
             break
-        output += str(get_bit_string(prefix_table, char))
+        bit_str = get_bit_string(prefix_table, char)
+        output.append(bit_str)
     f_handler.close()
-    return output
+    return b''.join(output)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -178,10 +193,18 @@ if __name__ == "__main__":
 
     build_huffman_tree(q)
     huffman_tree_head = q[0]
-    walk_huffman(huffman_tree_head, "")
-    compressed_content = build_header(huffman_tree_head)
-    compressed_content += compress_file(huffman_tree_head, f'{INPUT_DIR}/{file_name}')
-    with open("output.txt", "wb") as w:
-        w.write(bytes(compressed_content, "utf-8"))
+    walk_huffman(huffman_tree_head, b'')
+    test_compressed_bit_length(huffman_tree_head)
+    header = build_header(huffman_tree_head)
+    """
+    There is a difference between the sum of the bits from huffman table and 
+    the compressed_output length. This probably means there is some data missing.
+    Also the size of compressed output is larger than original file. 
+    """
+    compressed_output = compress_file(huffman_tree_head, f'{INPUT_DIR}/{file_name}')
+    print(type(compressed_output))
+    with open("output.bin", "wb") as w:
+        w.write(header.encode())
+        w.write(compressed_output)
 
 
