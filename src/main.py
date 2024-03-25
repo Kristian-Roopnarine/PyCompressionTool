@@ -3,10 +3,11 @@ import os
 import time
 
 
-INPUT_DIR="files_to_compress"
-DECOMPRESS_DIR="compressed_files"
-HEADER_BEGIN="HEADER_BEGIN"
-HEADER_END="HEADER_END"
+INPUT_DIR = "files_to_compress"
+DECOMPRESS_DIR = "compressed_files"
+HEADER_BEGIN = "HEADER_BEGIN"
+HEADER_END = "HEADER_END"
+
 
 class HuffmanNode:
 
@@ -21,7 +22,7 @@ class HuffmanNode:
         self.bit_str = bit_str
 
     def get_bit_string(self):
-        return 
+        return
 
     def get_header_string(self):
         return f"{ord(self.char)},{self.freq}"
@@ -29,29 +30,35 @@ class HuffmanNode:
     def __str__(self):
         return f"Character: {'Internal Node' if self.char is None else self.char} Frequency: {self.freq}"
 
+
 def get_file_name(argv):
     return argv[1]
+
 
 # used dictionary at first but reading in utf-8 gave wrong file size
 def gen_char_freq(file_path):
     char_frequency = [0] * 256
-    f = open(file_path, 'rb')
+    f = open(file_path, "rb")
     while True:
         char = f.read(1)
-        if char == b'':
+        if char == b"":
             break
         char_frequency[ord(char)] += 1
     f.close()
     return char_frequency
 
+
 def left(i):
     return (i * 2) + 1
+
 
 def right(i):
     return (i * 2) + 2
 
+
 def parent(i):
     return (i - 1) // 2
+
 
 def min_heapify(queue, i):
     min = i
@@ -66,9 +73,11 @@ def min_heapify(queue, i):
         queue[min], queue[i] = queue[i], queue[min]
         min_heapify(queue, min)
 
+
 def build_min_heap(queue):
-    for i in range(len(queue)//2, 0, -1):
+    for i in range(len(queue) // 2, 0, -1):
         min_heapify(queue, i)
+
 
 # how do I remove an item from the min heap?
 def extract_min(q):
@@ -83,6 +92,7 @@ def extract_min(q):
     # return min element
     return min
 
+
 def insert(q, node):
     # increase size of q
     # insert value at the end of the queue
@@ -93,6 +103,7 @@ def insert(q, node):
         q[parent(i)], q[i] = q[parent(i)], q[i]
         i = parent(i)
 
+
 def build_huffman_tree(q):
     while len(q) != 1:
         l = extract_min(q)
@@ -100,20 +111,23 @@ def build_huffman_tree(q):
         new_node = HuffmanNode(None, l.freq + r.freq, l, r)
         insert(q, new_node)
 
-def walk_huffman(node,prefix_table, bitStr):
+
+def walk_huffman(node, prefix_table, bitStr):
     if not (node.left and node.right):
         node.set_bit_str(bitStr)
         prefix_table[ord(node.char)] = bitStr
         return
     if node.left:
-        walk_huffman(node.left, prefix_table, bitStr + '0')
+        walk_huffman(node.left, prefix_table, bitStr + "0")
     if node.right:
-        walk_huffman(node.right,prefix_table, bitStr + '1')
+        walk_huffman(node.right, prefix_table, bitStr + "1")
+
 
 def gen_prefix_table(huffman_node):
     prefix_table = [0] * 256
     walk_huffman(huffman_node, prefix_table, "")
     return prefix_table
+
 
 def is_valid_min_heap(q):
     for node in q:
@@ -123,10 +137,11 @@ def is_valid_min_heap(q):
             return False
     return True
 
+
 def _header_builder(node, header_arr):
     if not (node.left and node.right):
         header_arr.append(node.get_header_string())
-        return 
+        return
     if node.left:
         _header_builder(node.left, header_arr)
     if node.right:
@@ -140,17 +155,20 @@ def _traverse(node):
         return len(bin(int(node.bit_str, 2))) * node.freq
     return _traverse(node.left) + _traverse(node.right)
 
+
 def test_compressed_bit_length(node):
     _sum = _traverse(node)
     print(_sum)
 
+
 def build_header(huffman_tree):
     header_arr = [HEADER_BEGIN]
-    node = huffman_tree 
+    node = huffman_tree
     _header_builder(node, header_arr)
     header_arr.append(HEADER_END)
     header_arr.append("\n")
     return "\n".join(header_arr)
+
 
 def gen_reverse_prefix_map(prefix_table):
     reverse_prefix_map = dict()
@@ -160,12 +178,13 @@ def gen_reverse_prefix_map(prefix_table):
         reverse_prefix_map[val] = chr(idx)
     return reverse_prefix_map
 
+
 def compress_file(prefix_table, file_name):
     f_handler = open(file_name, "rb")
     output = ""
     while True:
         char = f_handler.read(1)
-        if char == b'':
+        if char == b"":
             break
         try:
             output += prefix_table[ord(char.decode())]
@@ -174,8 +193,9 @@ def compress_file(prefix_table, file_name):
     f_handler.close()
     return output
 
+
 def compress(file_name):
-    file_path = f'{INPUT_DIR}/{file_name}'
+    file_path = f"{INPUT_DIR}/{file_name}"
     if not (os.path.exists(file_path) and os.path.isfile(file_path)):
         print("Error finding file")
         sys.exit(1)
@@ -198,14 +218,15 @@ def compress(file_name):
     huffman_tree_head = q[0]
     prefix_table = gen_prefix_table(huffman_tree_head)
     header = build_header(huffman_tree_head)
-    compressed_output = compress_file(prefix_table, f'{INPUT_DIR}/{file_name}')
+    compressed_output = compress_file(prefix_table, f"{INPUT_DIR}/{file_name}")
     compressed_output_len = len(compressed_output) + 7
     byte_size = compressed_output_len // 8
     compressed_bytes = int(compressed_output, 2).to_bytes(byte_size, byteorder="big")
     output_file = f"{DECOMPRESS_DIR}/{file_name.split('.')[0]}.bin"
-    with open(output_file, 'wb+') as w:
+    with open(output_file, "wb+") as w:
         w.write(header.encode())
         w.write(compressed_bytes)
+
 
 def read_header(f):
     in_header = False
@@ -225,12 +246,13 @@ def read_header(f):
             freq[int(char)] = int(char_freq)
     return f, freq
 
+
 def decompress(file_name):
-    file_path = f'{DECOMPRESS_DIR}/{file_name}'
+    file_path = f"{DECOMPRESS_DIR}/{file_name}"
     if not (os.path.exists(file_path) and os.path.isfile(file_path)):
         print("Error finding file")
         sys.exit(1)
-    f = open(file_path,"rb")
+    f = open(file_path, "rb")
     f, freq = read_header(f)
     q = []
     for idx, val in enumerate(freq):
@@ -243,13 +265,13 @@ def decompress(file_name):
     prefix_table = gen_prefix_table(huffman_tree_head)
     output = ""
     compressed_content = f.read()
-    file_to_decode = bin(int(compressed_content.hex(), 16)).replace('0b', '')
+    file_to_decode = bin(int(compressed_content.hex(), 16)).replace("0b", "")
     f.close()
     curr_node = huffman_tree_head
     for char in file_to_decode:
-        if char == '0':
+        if char == "0":
             curr_node = curr_node.left
-        if char == '1':
+        if char == "1":
             curr_node = curr_node.right
 
         if not (curr_node.left and curr_node.right):
@@ -269,5 +291,3 @@ if __name__ == "__main__":
         decompress(file_name)
     else:
         compress(file_name)
-
-
