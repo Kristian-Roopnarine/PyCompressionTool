@@ -1,9 +1,9 @@
 def left(i):
-    return (i + 1) * 2
+    return (i * 2) + 1
 
 
 def right(i):
-    return (i + 2) * 2
+    return (i * 2) + 2
 
 
 def parent(i):
@@ -11,12 +11,13 @@ def parent(i):
 
 
 def min_heapify(q, i):
-    min = i
     l = left(i)
     r = right(i)
     if l < len(q) and q[l] < q[i]:
         min = l
-    if r < len(q) and q[r] < q[i]:
+    else:
+        min = i
+    if r < len(q) and q[r] < q[min]:
         min = r
 
     if min != i:
@@ -25,11 +26,11 @@ def min_heapify(q, i):
 
 
 def build(q):
-    for i in range(len(q) // 2, 0, -1):
+    for i in range((len(q) // 2) + 1, 0, -1):
         min_heapify(q, i)
 
 
-def queue(node, q):
+def enqueue(node, q):
     q.append(node)
     i = len(q) - 1
     while i >= 0 and q[parent(i)] > q[i]:
@@ -45,4 +46,17 @@ def deque(q):
     # decrement queue size
     min = q.pop()
     min_heapify(q, 0)
+    if not is_valid(q):
+        raise Exception("Produced incorrect min heap")
     return min
+
+
+def is_valid(q):
+    for i in range(len(q)):
+        l = left(i)
+        r = right(i)
+        if l < len(q) and q[i] > q[l]:
+            return False
+        if r < len(q) and q[i] > q[r]:
+            return False
+    return True

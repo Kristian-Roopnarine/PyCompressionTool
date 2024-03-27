@@ -1,5 +1,5 @@
 import sys
-import os
+from huffman import encode, decode
 
 FILES_TO_COMPRESS = "files_to_compress"
 
