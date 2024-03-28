@@ -1,8 +1,6 @@
 import sys
 from huffman import encode, decode
 
-FILES_TO_COMPRESS = "files_to_compress"
-
 
 def get_file_info(args):
     file_name = args[1]
