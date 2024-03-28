@@ -43,7 +43,7 @@ def build_huffman(q):
         r = priority_queue.deque(q)
         internal = HuffmanNode(None, l.freq + r.freq, l, r)
         priority_queue.enqueue(internal, q)
-    # huffman node will be last element in list
+    # huffman node will be only element in list
     return q[0]
 
 
@@ -137,8 +137,9 @@ def decode(file_name):
     q = gen_nodes_from_header(header)
     priority_queue.build(q)
     huffman_root = build_huffman(q)
-    binary_str = bin(int(f.read().hex(), 16)).replace("0b", "")
+    output = f.read()
     f.close()
+    binary_str = bin(int.from_bytes(output, byteorder="big")).replace("0b", "")
     decompressed_contents = decompress(binary_str, huffman_root)
     with open(f"{file_name}_decompressed.txt", "w") as w:
         w.write(decompressed_contents)
