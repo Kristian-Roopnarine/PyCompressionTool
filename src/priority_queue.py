@@ -13,10 +13,9 @@ def parent(i):
 def min_heapify(q, i):
     l = left(i)
     r = right(i)
-    if l < len(q) and q[l] < q[i]:
+    min = i
+    if l < len(q) and q[l] < q[min]:
         min = l
-    else:
-        min = i
     if r < len(q) and q[r] < q[min]:
         min = r
 
